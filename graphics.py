@@ -1,4 +1,4 @@
-"""Drawn sprites: grass, sod, flags, bombs, break shards, and decoy splats."""
+# Drawn sprites and animations
 
 from __future__ import annotations
 
@@ -33,8 +33,8 @@ from constants import (
 )
 
 
+# Build a cached grassy field of patches and blades
 def make_grass(width: int, height: int, seed: int = 7) -> pygame.Surface:
-    """Build a cached grassy field of patches and blades."""
     rng = random.Random(seed)
     surf = pygame.Surface((width, height))
     surf.fill(GRASS_BASE)
@@ -58,24 +58,24 @@ def make_grass(width: int, height: int, seed: int = 7) -> pygame.Surface:
     return surf
 
 
+# Unopened grassy tile with a raised highlight
 def draw_sod(surface: pygame.Surface, rect: pygame.Rect) -> None:
-    """Unopened grassy tile with a raised highlight."""
     pygame.draw.rect(surface, HIDDEN, rect, border_radius=4)
     highlight = pygame.Rect(rect.x + 2, rect.y + 2, rect.width - 4, max(4, rect.height // 4))
     pygame.draw.rect(surface, HIDDEN_TOP, highlight, border_radius=3)
     pygame.draw.rect(surface, HIDDEN_BORDER, rect, 2, border_radius=4)
 
 
+# Opened soil under a broken sod tile
 def draw_dirt(surface: pygame.Surface, rect: pygame.Rect) -> None:
-    """Opened soil under a broken sod tile."""
     pygame.draw.rect(surface, DIRT, rect, border_radius=3)
     pygame.draw.rect(surface, DIRT_DARK, rect, 2, border_radius=3)
     inset = rect.inflate(-rect.width // 3, -rect.height // 2)
     pygame.draw.ellipse(surface, DIRT_DARK, inset)
 
 
+# Red triangular flag on a wooden pole
 def draw_flag(surface: pygame.Surface, rect: pygame.Rect) -> None:
-    """Red triangular flag on a wooden pole."""
     pole_x = rect.x + rect.width * 0.32
     top = rect.y + rect.height * 0.18
     bottom = rect.y + rect.height * 0.82
@@ -85,8 +85,8 @@ def draw_flag(surface: pygame.Surface, rect: pygame.Rect) -> None:
     pygame.draw.polygon(surface, FLAG_RED, [(pole_x, top), tip, mid])
 
 
+# Draws a bomb (white if decoy, red background if exploded)
 def draw_bomb(surface: pygame.Surface, rect: pygame.Rect, exploded: bool = False, decoy: bool = False) -> None:
-    """Round bomb with spikes; decoys are white, real mines are dark (red crater if exploded)."""
     if decoy:
         fill = (210, 216, 224)
         body, gloss, spike = DECOY_BOMB, DECOY_GLOSS, DECOY_BOMB_EDGE
@@ -112,14 +112,14 @@ def draw_bomb(surface: pygame.Surface, rect: pygame.Rect, exploded: bool = False
         )
 
 
+# Tiny ? in the top-right of a tile that touches a decoy
 def draw_decoy_hint(surface: pygame.Surface, rect: pygame.Rect, font: pygame.font.Font) -> None:
-    """Tiny ? in the top-right of a tile that touches a decoy."""
     mark = font.render("?", True, HINT)
     surface.blit(mark, (rect.right - mark.get_width() - 3, rect.top + 1))
 
 
+# Sod shard animation when a tile opens
 class TileBreak:
-    """Sod shards that fly apart so a reveal eases in instead of popping."""
 
     def __init__(self, rect: pygame.Rect, start_ms: int, duration_ms: int = BREAK_MS):
         self.start_ms = start_ms
@@ -145,21 +145,21 @@ class TileBreak:
                 }
             )
 
+    # 0–1 clock for this crack, clamped
     def progress(self, now_ms: int) -> float:
-        """0–1 clock for this crack, clamped."""
         t = (now_ms - self.start_ms) / self.duration_ms
         return max(0.0, min(1.0, t))
 
+    # True before the stagger delay elapses
     def waiting(self, now_ms: int) -> bool:
-        """True before the stagger delay elapses."""
         return now_ms < self.start_ms
 
+    # True after shards have finished flying
     def done(self, now_ms: int) -> bool:
-        """True after shards have finished flying."""
         return now_ms >= self.start_ms + self.duration_ms
 
+    # Draws the fading shards
     def draw(self, surface: pygame.Surface, rect: pygame.Rect, now_ms: int) -> None:
-        """Paint the fading, spinning sod pieces over the opened tile."""
         if self.waiting(now_ms) or self.done(now_ms):
             return
         t = self.progress(now_ms)
@@ -183,8 +183,8 @@ class TileBreak:
         surface.blit(shard_surf, (cx - ox, cy - oy))
 
 
+# White paint burst used when a decoy bomb is clicked
 class Splat:
-    """White paint burst used when a decoy bomb is clicked."""
 
     def __init__(self, rect: pygame.Rect, start_ms: int, duration_ms: int = SPLAT_MS):
         self.start_ms = start_ms
@@ -203,12 +203,12 @@ class Splat:
                 }
             )
 
+    # True once the splat has faded
     def done(self, now_ms: int) -> bool:
-        """True once the splat has faded."""
         return now_ms >= self.start_ms + self.duration_ms
 
+    # Expand white blobs from the tile center, then fade them
     def draw(self, surface: pygame.Surface, rect: pygame.Rect, now_ms: int) -> None:
-        """Expand white blobs from the tile center, then fade them."""
         if now_ms < self.start_ms or self.done(now_ms):
             return
         t = max(0.0, min(1.0, (now_ms - self.start_ms) / self.duration_ms))
@@ -229,3 +229,14 @@ class Splat:
             pygame.draw.ellipse(blob, (*drop["color"], int(240 * fade)), (x - w / 2, y - h / 2, w, h))
         surface.blit(blob, (cx - ox, cy - oy))
         pygame.draw.circle(surface, TEXT, (cx, cy), max(2, int(rect.width * 0.08 * fade)))
+
+
+# Small round clock face for the timer
+def draw_clock(surface: pygame.Surface, rect: pygame.Rect) -> None:
+    cx, cy = rect.center
+    r = min(rect.width, rect.height) // 2 - 1
+    pygame.draw.circle(surface, TEXT, (cx, cy), r)
+    pygame.draw.circle(surface, HIDDEN_BORDER, (cx, cy), r, 2)
+    pygame.draw.line(surface, HIDDEN_BORDER, (cx, cy), (cx, cy - int(r * 0.65)), 2)
+    pygame.draw.line(surface, HIDDEN_BORDER, (cx, cy), (cx + int(r * 0.45), cy), 2)
+    pygame.draw.circle(surface, HIDDEN_BORDER, (cx, cy), 2)

@@ -1,10 +1,10 @@
-"""Run Minesweeper."""
+# Run Minesweeper
 
 from game import Game
 
 
+# Create the game window and start the loop
 def main() -> None:
-    """Create the game window and start the loop."""
     Game().run()
 
 

@@ -1,4 +1,4 @@
-"""Grid logic: mines, decoys, flood fill, win/lose."""
+# Grid logic: mines, decoys, flood fill, win/lose
 
 from __future__ import annotations
 
@@ -9,16 +9,16 @@ from cell import Cell
 from constants import MAX_SIZE, MIN_SIZE
 
 
+# High-level match state used by drawing and input
 class GameStatus(Enum):
-    """High-level match state used by drawing and input."""
 
     PLAYING = auto()
     WON = auto()
     LOST = auto()
 
 
+# The grid; mines and decoys are placed after the first click
 class Board:
-    """The grid. Mines and decoys land after the first click so that click is always a free opening."""
 
     def __init__(self, rows: int, cols: int, mine_count: int, decoy_count: int = 0):
         self.rows = self._clamp_size(rows)
@@ -32,29 +32,29 @@ class Board:
         self.mines_placed = False
         self.flags_placed = 0
 
+    # Keep the board inside the allowed size range
     @staticmethod
     def _clamp_size(value: int) -> int:
-        """Keep the board inside the allowed size range."""
         return max(MIN_SIZE, min(MAX_SIZE, int(value)))
 
+    # Keeps at least one safe cell for the first click
     def _clamp_mines(self, mine_count: int) -> int:
-        """Leave at least one safe cell so the first click can never be a mine."""
         max_mines = self.rows * self.cols - 1
         return max(1, min(max_mines, int(mine_count)))
 
+    # Limits decoys to the leftover cells
     def _clamp_decoys(self, decoy_count: int) -> int:
-        """Decoys fill leftover cells after mines and the freebie opening."""
         leftover = self.rows * self.cols - 1 - self.mine_count
         return max(0, min(leftover, int(decoy_count)))
 
+    # Gets a cell, or None if off the board
     def cell_at(self, row: int, col: int) -> Cell | None:
-        """Look up a cell, or None if the coordinate is off the board."""
         if 0 <= row < self.rows and 0 <= col < self.cols:
             return self.cells[row][col]
         return None
 
+    # The up-to-eight squares touching this one
     def neighbors(self, row: int, col: int) -> list[Cell]:
-        """The up-to-eight squares touching this one."""
         nearby: list[Cell] = []
         for dr in (-1, 0, 1):
             for dc in (-1, 0, 1):
@@ -65,12 +65,12 @@ class Board:
                     nearby.append(cell)
         return nearby
 
+    # Mines still unflagged, shown in the header
     def remaining_mines(self) -> int:
-        """Mines still unflagged, shown in the header."""
         return self.mine_count - self.flags_placed
 
+    # Toggles a flag on a hidden tile
     def toggle_flag(self, row: int, col: int) -> None:
-        """Right-click: flag or unflag while the match is still going."""
         if self.status is not GameStatus.PLAYING:
             return
         cell = self.cell_at(row, col)
@@ -79,8 +79,8 @@ class Board:
         if cell.toggle_flag():
             self.flags_placed += 1 if cell.is_flagged else -1
 
+    # Reveals a tile and returns the newly opened cells
     def reveal(self, row: int, col: int) -> list[Cell]:
-        """Left-click: open a tile, flood empties, or trip a real mine. Returns newly opened cells."""
         opened: list[Cell] = []
         if self.status is not GameStatus.PLAYING:
             return opened
@@ -100,14 +100,14 @@ class Board:
             self.status = GameStatus.LOST
             return opened
 
-        if not cell.is_decoy and cell.adjacent_mines == 0:
+        if not cell.is_decoy and cell.total_adjacent == 0:
             opened.extend(self._flood_fill(cell))
 
         self._check_win()
         return opened
 
+    # Places mines and decoys, keeping the first click's area clear
     def _place_mines(self, safe_row: int, safe_col: int) -> None:
-        """Drop mines and decoys, keeping the first click and its neighbors empty so it floods."""
         opening = {(safe_row, safe_col)}
         for neighbor in self.neighbors(safe_row, safe_col):
             opening.add((neighbor.row, neighbor.col))
@@ -139,8 +139,8 @@ class Board:
         self._recount_neighbors()
         self.mines_placed = True
 
+    # Moves any mine or decoy out of the first-click area
     def _clear_opening(self, safe_row: int, safe_col: int) -> None:
-        """Move any mine/decoy off the first-click pocket so that break is always a free empty flood."""
         pocket = [self.cells[safe_row][safe_col], *self.neighbors(safe_row, safe_col)]
         parked = {(c.row, c.col) for c in pocket}
         free = [
@@ -161,8 +161,8 @@ class Board:
             cell.is_mine = False
             cell.is_decoy = False
 
+    # Counts nearby mines and decoys for every cell
     def _recount_neighbors(self) -> None:
-        """Numbers count real mines only; adjacent_decoys drives the corner ? hint."""
         for r in range(self.rows):
             for c in range(self.cols):
                 cell = self.cells[r][c]
@@ -170,14 +170,14 @@ class Board:
                 cell.adjacent_mines = sum(1 for n in nearby if n.is_mine)
                 cell.adjacent_decoys = sum(1 for n in nearby if n.is_decoy)
 
+    # Opens connected empty tiles, stopping at numbers
     def _flood_fill(self, start: Cell) -> list[Cell]:
-        """Open the connected empty region, stopping at numbers, flags, mines, and decoys."""
         opened: list[Cell] = []
         stack = [start]
         seen = {(start.row, start.col)}
         while stack:
             current = stack.pop()
-            if current.adjacent_mines != 0:
+            if current.total_adjacent != 0:
                 continue
             for neighbor in self.neighbors(current.row, current.col):
                 key = (neighbor.row, neighbor.col)
@@ -186,12 +186,12 @@ class Board:
                 seen.add(key)
                 if neighbor.reveal():
                     opened.append(neighbor)
-                if neighbor.adjacent_mines == 0:
+                if neighbor.total_adjacent == 0:
                     stack.append(neighbor)
         return opened
 
+    # On a loss, uncover every real bomb and leftover decoy
     def _reveal_all_mines(self) -> list[Cell]:
-        """On a loss, uncover every real bomb and leftover decoy."""
         opened: list[Cell] = []
         for row in self.cells:
             for cell in row:
@@ -203,8 +203,8 @@ class Board:
                         opened.append(cell)
         return opened
 
+    # Wins when every non-mine tile is open, then flags the mines
     def _check_win(self) -> None:
-        """Win when every non-mine tile (including decoys) is open; auto-flag remaining mines."""
         for row in self.cells:
             for cell in row:
                 if not cell.is_mine and not cell.is_revealed:

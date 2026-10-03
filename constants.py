@@ -1,11 +1,11 @@
-"""Shared layout, colors, and game limits for Minesweeper."""
+# Shared layout, colors, and game limits for Minesweeper.
 
 # Grid generation
 MIN_SIZE = 5
 MAX_SIZE = 30
 DEFAULT_ROWS = 9
 DEFAULT_COLS = 9
-DEFAULT_MINES = 10
+DEFAULT_MINES = 15
 DEFAULT_DECOYS = 3
 
 # Window / cells
@@ -20,6 +20,13 @@ BREAK_MS = 320
 BREAK_STAGGER_MS = 38
 MINE_STAGGER_MS = 28
 SPLAT_MS = 420
+
+# Round-end pacing (lets the board animations play before a menu appears)
+LOSS_MENU_DELAY_MS = 1500
+WIN_MENU_DELAY_MS = 900
+
+# Leaderboard
+LEADERBOARD_SIZE = 10
 
 # Colors
 BG = (34, 92, 38)
@@ -50,14 +57,16 @@ SPLAT_COLORS = ((248, 250, 252), (220, 226, 236), (186, 196, 210), (255, 255, 25
 HINT = (90, 40, 140)
 TAB_BG = (36, 64, 38)
 TAB_ACTIVE = (68, 118, 58)
+HIGHLIGHT = (240, 210, 90)
 
 # Setup-screen rules copy
 RULES = [
     "Clear every safe tile. Do not click a real bomb.",
     "Left click opens a tile. Right click (or Ctrl+click) plants a flag.",
-    "The number is how many real bombs touch that tile.",
-    "A ? in the top-right corner means a decoy bomb is next door.",
+    "The number is how many bombs touch that tile, real and decoy together.",
+    "A ? in the top-right corner means one of those bombs is a decoy.",
     "Your first click is always a free opening — mines are placed after it.",
+    "Timer starts on your first click. Wins go on the leaderboard.",
     "White bombs are decoys: they splat and do not end the game. You still must open them.",
     "Dark bombs are real. Hit one and every bomb on the board is shown.",
     "Flag the bombs you have found. Open every non-bomb tile to win.",
